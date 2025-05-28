@@ -1,0 +1,63 @@
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
+  theme: {
+    extend: {
+      colors: {
+        primary: {
+          50: '#e6f3f7',
+          100: '#cce7ef',
+          200: '#99cfdf',
+          300: '#66b7cf',
+          400: '#339fbf',
+          500: '#0087af',
+          600: '#006d8c',
+          700: '#005269',
+          800: '#003646',
+          900: '#001b23',
+        },
+        secondary: {
+          50: '#e6f7eb',
+          100: '#ccefd7',
+          200: '#99dfaf',
+          300: '#66cf87',
+          400: '#33bf5f',
+          500: '#00af37',
+          600: '#008c2c',
+          700: '#006921',
+          800: '#004616',
+          900: '#00230b',
+        },
+        accent: {
+          50: '#fff2e6',
+          100: '#ffe5cc',
+          200: '#ffcb99',
+          300: '#ffb166',
+          400: '#ff9733',
+          500: '#ff7d00',
+          600: '#cc6400',
+          700: '#994b00',
+          800: '#663200',
+          900: '#331900',
+        },
+        neutral: {
+          50: '#f4f7fa',
+          100: '#e9eff5',
+          200: '#d3dfeb',
+          300: '#b4c7db',
+          400: '#8da8c3',
+          500: '#6c8aab',
+          600: '#526e8f',
+          700: '#415973',
+          800: '#374a60',
+          900: '#2f3d51',
+        },
+      },
+      fontFamily: {
+        sans: ['Inter var', 'ui-sans-serif', 'system-ui'],
+        display: ['Plus Jakarta Sans', 'system-ui', 'sans-serif'],
+      },
+    },
+  },
+  plugins: [],
+};
