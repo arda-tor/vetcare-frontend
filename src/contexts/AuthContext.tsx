@@ -1,9 +1,10 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User, AuthState, Credentials } from '../types';
-import { mockAuthenticate, mockSendPasswordRecovery } from '../utils/mockData';
+import { AuthState, Credentials, RegisterData, User } from '../types';
+import api from '../lib/axios';
 
 interface AuthContextType extends AuthState {
   login: (credentials: Credentials) => Promise<User | null>;
+  register: (data: RegisterData) => Promise<User | null>;
   logout: () => void;
   recoverPassword: (email: string) => Promise<boolean>;
 }
@@ -17,6 +18,7 @@ const initialState: AuthState = {
 export const AuthContext = createContext<AuthContextType>({
   ...initialState,
   login: () => Promise.resolve(null),
+  register: () => Promise.resolve(null),
   logout: () => {},
   recoverPassword: () => Promise.resolve(false),
 });
@@ -25,79 +27,81 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [authState, setAuthState] = useState<AuthState>(initialState);
 
   useEffect(() => {
-    // Check for existing session in localStorage
     const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      try {
-        const user = JSON.parse(storedUser);
-        setAuthState({
-          user,
-          isAuthenticated: true,
-          isLoading: false,
-        });
-      } catch (error) {
-        console.error('Failed to parse stored user', error);
-        localStorage.removeItem('user');
-        setAuthState({ ...initialState, isLoading: false });
-      }
+    const storedToken = localStorage.getItem('token');
+
+    if (storedUser && storedToken) {
+      api.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
+      const user = JSON.parse(storedUser);
+      setAuthState({ user, isAuthenticated: true, isLoading: false });
     } else {
       setAuthState({ ...initialState, isLoading: false });
     }
   }, []);
 
   const login = async (credentials: Credentials): Promise<User | null> => {
-    setAuthState((prev) => ({ ...prev, isLoading: true }));
     try {
-      const user = await mockAuthenticate(credentials.email, credentials.password);
-      if (user) {
-        localStorage.setItem('user', JSON.stringify(user));
-        setAuthState({
-          user,
-          isAuthenticated: true,
-          isLoading: false,
-        });
-        return user;
-      }
-      setAuthState((prev) => ({ ...prev, isLoading: false }));
-      return null;
+      const res = await api.post('/auth/login', credentials);
+      const { token, user } = res.data.data;
+
+      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      localStorage.setItem('token', token);
+      localStorage.setItem('user', JSON.stringify(user));
+
+      setAuthState({ user, isAuthenticated: true, isLoading: false });
+      return user;
     } catch (error) {
-      console.error('Login error:', error);
-      setAuthState((prev) => ({ ...prev, isLoading: false }));
+      console.error('Login failed', error);
+      setAuthState({ user: null, isAuthenticated: false, isLoading: false });
+      return null;
+    }
+  };
+
+  const register = async (data: RegisterData): Promise<User | null> => {
+    try {
+      const res = await api.post('/auth/register', data);
+      const { token, user } = res.data.data;
+
+      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      localStorage.setItem('token', token);
+      localStorage.setItem('user', JSON.stringify(user));
+
+      setAuthState({ user, isAuthenticated: true, isLoading: false });
+      return user;
+    } catch (error) {
+      console.error('Register failed', error);
+      setAuthState({ user: null, isAuthenticated: false, isLoading: false });
       return null;
     }
   };
 
   const logout = () => {
+    try {
+      api.post('/auth/logout');
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    } catch (e) {
+      // silently fail
+    }
+
+    localStorage.removeItem('token');
     localStorage.removeItem('user');
-    setAuthState({
-      user: null,
-      isAuthenticated: false,
-      isLoading: false,
-    });
+    delete api.defaults.headers.common['Authorization'];
+
+    setAuthState({ user: null, isAuthenticated: false, isLoading: false });
   };
 
   const recoverPassword = async (email: string): Promise<boolean> => {
-    setAuthState((prev) => ({ ...prev, isLoading: true }));
     try {
-      const success = await mockSendPasswordRecovery(email);
-      setAuthState((prev) => ({ ...prev, isLoading: false }));
-      return success;
+      const res = await api.post('/auth/recover', { email });
+      return res.status === 200;
     } catch (error) {
       console.error('Password recovery error:', error);
-      setAuthState((prev) => ({ ...prev, isLoading: false }));
       return false;
     }
   };
 
   return (
-    <AuthContext.Provider
-      value={{
-        ...authState,
-        login,
-        logout,
-        recoverPassword,
-      }}
-    >
+    <AuthContext.Provider value={{ ...authState, login, register, logout, recoverPassword }}>
       {children}
     </AuthContext.Provider>
   );

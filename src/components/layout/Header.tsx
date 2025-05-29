@@ -95,7 +95,7 @@ const Header: React.FC = () => {
                 <div className="text-sm text-neutral-700">
                   <span className="mr-2">Hello, {user?.name.split(' ')[0]}</span>
                   <span className="bg-neutral-100 px-2 py-1 rounded text-xs capitalize">
-                    {user?.role}
+                    {user?.roles?.[0]?.name}
                   </span>
                 </div>
                 <Button
@@ -113,9 +113,14 @@ const Header: React.FC = () => {
                 </Link>
               </div>
             ) : (
-              <Link to="/login">
-                <Button size="sm">Sign In</Button>
-              </Link>
+              <div className="flex items-center space-x-3">
+                <Link to="/login">
+                  <Button variant="outline" size="sm">Sign In</Button>
+                </Link>
+                <Link to="/register">
+                  <Button size="sm">Register</Button>
+                </Link>
+              </div>
             )}
           </nav>
 
@@ -154,7 +159,7 @@ const Header: React.FC = () => {
                     <div className="text-sm text-neutral-700">
                       <span className="mr-2">Hello, {user?.name.split(' ')[0]}</span>
                       <span className="bg-neutral-100 px-2 py-1 rounded text-xs capitalize">
-                        {user?.role}
+                        {user?.roles?.[0]?.name}
                       </span>
                     </div>
                   </div>
@@ -177,14 +182,24 @@ const Header: React.FC = () => {
                 </li>
               </>
             ) : (
-              <li className="pt-2 border-t border-neutral-200">
-                <Link
-                  to="/login"
-                  className="block px-2 py-1 text-base font-medium text-primary-500"
-                >
-                  Sign In
-                </Link>
-              </li>
+              <>
+                <li className="pt-2 border-t border-neutral-200">
+                  <Link
+                    to="/login"
+                    className="block px-2 py-1 text-base font-medium text-primary-500"
+                  >
+                    Sign In
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/register"
+                    className="block px-2 py-1 text-base font-medium text-primary-600"
+                  >
+                    Register
+                  </Link>
+                </li>
+              </>
             )}
           </ul>
         </div>

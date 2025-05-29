@@ -1,13 +1,14 @@
 import React from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
-import LoginForm from '../components/auth/LoginForm';
+import RegisterForm from '../components/auth/RegisterForm';
 import { useAuth } from '../contexts/AuthContext';
 
-const Login: React.FC = () => {
+const Register: React.FC = () => {
   const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
 
-  const handleLoginSuccess = () => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const handleRegisterSuccess = (role: string) => {
     navigate('/dashboard');
   };
 
@@ -21,14 +22,21 @@ const Login: React.FC = () => {
         <div className="flex flex-col md:flex-row items-center justify-center md:justify-between gap-12">
           <div className="max-w-md">
             <h1 className="text-3xl md:text-4xl font-display font-bold text-neutral-800 mb-4">
-              Welcome Back to PetCare Staff Portal
+              Join PetCare Staff Portal
             </h1>
             <p className="text-lg text-neutral-600 mb-4">
-              Please sign in to access your dashboard and manage appointments.
+              Create your account to access the staff portal and start managing appointments and patient care.
             </p>
+            <div className="bg-primary-50 border border-primary-100 rounded-lg p-4">
+              <h3 className="font-medium text-primary-800 mb-2">For Demo Purpose:</h3>
+              <p className="text-sm text-neutral-700">
+                In a production environment, staff registration would typically require admin approval. For this demo, all registrations are automatically approved.
+              </p>
+            </div>
           </div>
+
           <div className="w-full max-w-md">
-            <LoginForm onSuccess={handleLoginSuccess} />
+            <RegisterForm onSuccess={handleRegisterSuccess} />
           </div>
         </div>
       </div>
@@ -36,4 +44,4 @@ const Login: React.FC = () => {
   );
 };
 
-export default Login;
+export default Register;

@@ -1,8 +1,13 @@
+export interface Role {
+  id: number;
+  name: 'doctor' | 'receptionist' | 'admin'; // sadece bu üç rol varsa
+}
+
 export interface User {
-  id: string;
+  id: number;
   name: string;
   email: string;
-  role: 'doctor' | 'receptionist' | 'admin';
+  roles: Role[]; // Dizi halinde geliyor
 }
 
 export interface AuthState {
@@ -16,10 +21,23 @@ export interface Credentials {
   password: string;
 }
 
+export interface RegisterData {
+  name: string;
+  email: string;
+  password: string;
+}
+
 export interface LoginFormValues {
   email: string;
   password: string;
   rememberMe?: boolean;
+}
+
+export interface RegisterFormValues {
+  name: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
 }
 
 export interface RecoveryFormValues {
@@ -29,4 +47,48 @@ export interface RecoveryFormValues {
 export interface AlertProps {
   type: 'success' | 'error' | 'warning' | 'info';
   message: string;
+}
+
+export interface Patient {
+  id: number;
+  name: string;
+  species: string;
+  breed?: string;
+  birthDate?: string;
+  ownerName: string;
+  ownerEmail: string;
+  ownerPhone: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Appointment {
+  id: number;
+  patientId: number;
+  doctorId: number;
+  date: string;
+  time: string;
+  type: string;
+  status: 'scheduled' | 'confirmed' | 'checked-in' | 'in-progress' | 'completed' | 'cancelled';
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+  patient?: Patient;
+  doctor?: User;
+}
+
+export interface MedicalRecord {
+  id: number;
+  patientId: number;
+  appointmentId?: number;
+  doctorId: number;
+  diagnosis?: string;
+  treatment?: string;
+  prescription?: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+  patient?: Patient;
+  doctor?: User;
+  appointment?: Appointment;
 }
