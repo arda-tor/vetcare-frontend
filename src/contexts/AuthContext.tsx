@@ -76,19 +76,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = () => {
-    try {
-      api.post('/auth/logout');
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    } catch (e) {
-      // silently fail
-    }
-
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     delete api.defaults.headers.common['Authorization'];
-
+  
     setAuthState({ user: null, isAuthenticated: false, isLoading: false });
+    window.location.href = '/login';
   };
+  
 
   const recoverPassword = async (email: string): Promise<boolean> => {
     try {

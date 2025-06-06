@@ -1,6 +1,6 @@
 export interface Role {
   id: number;
-  name: 'doctor' | 'receptionist' | 'admin'; // sadece bu üç rol varsa
+  name: 'doctor' | 'receptionist' | 'admin' | 'user'; // sadece bu üç rol varsa
 }
 
 export interface User {
