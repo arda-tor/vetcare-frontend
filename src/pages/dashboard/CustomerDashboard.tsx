@@ -6,18 +6,44 @@ import api from '../../lib/axios';
 import Button from '../../components/common/Button';
 import AddPetModal from '../../components/pets/AddPetModal';
 import PetDetailsModal from '../../components/pets/PetDetailsModal';
-import { Pet, AddPetFormValues } from '../../types'; // Ensure correct imports
+import AppointmentDetailsModal from '../../components/appointments/AppointmentDetailsModal';
+import { Pet, AddPetFormValues, UpcomingAppointment } from '../../types'; // Ensure correct imports
 
 const CustomerDashboard: React.FC = () => {
   const { user } = useAuth();
   const [pets, setPets] = useState<Pet[]>([]);
   const [loadingPets, setLoadingPets] = useState(true);
+  
+  // Upcoming appointments state
+  const [upcomingAppointments, setUpcomingAppointments] = useState<UpcomingAppointment[]>([]);
+  const [loadingAppointments, setLoadingAppointments] = useState(true);
 
   // Add-pet modal state
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   // Details modal state
   const [selectedPet, setSelectedPet] = useState<Pet | null>(null);
+  
+  // Appointment details modal state
+  const [selectedAppointment, setSelectedAppointment] = useState<UpcomingAppointment | null>(null);
+
+  // Fetch upcoming appointments
+  const fetchUpcomingAppointments = async () => {
+    setLoadingAppointments(true);
+    try {
+      const res = await api.get('/appointments/upcoming/list');
+      console.log('Upcoming appointments response:', res.data);
+      
+      // Handle different response structures
+      const appointments = res.data.data?.appointments || res.data.data || res.data || [];
+      setUpcomingAppointments(Array.isArray(appointments) ? appointments : []);
+    } catch (err) {
+      console.error('Error fetching upcoming appointments:', err);
+      setUpcomingAppointments([]);
+    } finally {
+      setLoadingAppointments(false);
+    }
+  };
 
   // Fetch the current user's pets
   const fetchPets = async () => {
@@ -66,11 +92,25 @@ const CustomerDashboard: React.FC = () => {
   useEffect(() => {
     if (user) {
       fetchPets();
+      fetchUpcomingAppointments();
     } else {
       setLoadingPets(false);
       setPets([]);
+      setLoadingAppointments(false);
+      setUpcomingAppointments([]);
     }
   }, [user]);
+
+  // Handler for appointment cancellation
+  const handleAppointmentCancelled = (appointmentId: number) => {
+    setUpcomingAppointments(prevAppointments =>
+      prevAppointments.map(appointment =>
+        appointment.id === appointmentId
+          ? { ...appointment, status: 'cancelled' }
+          : appointment
+      )
+    );
+  };
 
   // Handler for adding a new pet
   const handleAddPet = async (formData: AddPetFormValues) => {
@@ -168,7 +208,122 @@ const CustomerDashboard: React.FC = () => {
               </div>
             </div>
           </div>
-
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold text-neutral-800 flex items-center">
+                <Calendar className="mr-2 h-5 w-5 text-primary-500" />
+                Upcoming Appointments
+              </h2>
+              <Button size="sm">Schedule Visit</Button>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-neutral-200">
+                <thead className="bg-neutral-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                      Date & Time
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                      Pet
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                      Doctor
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                      Type
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-neutral-200">
+                  {loadingAppointments ? (
+                    <tr>
+                      <td colSpan={6} className="px-6 py-4 text-center text-neutral-600">
+                        Loading appointments...
+                      </td>
+                    </tr>
+                  ) : upcomingAppointments.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="px-6 py-4 text-center text-neutral-600">
+                        No upcoming appointments found.
+                      </td>
+                    </tr>
+                  ) : (
+                    upcomingAppointments.map((appointment) => (
+                      <tr key={appointment.id}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-800">
+                          <div className="font-medium">
+                            {new Date(appointment.start_datetime).toLocaleDateString()}
+                          </div>
+                          <div className="text-neutral-500">
+                            {new Date(appointment.start_datetime).toLocaleTimeString([], {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })} - {new Date(appointment.end_datetime).toLocaleTimeString([], {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-700">
+                          <div className="font-medium">{appointment.pet_name}</div>
+                          <div className="text-xs text-neutral-500">
+                            {appointment.pet_species} - {appointment.pet_breed}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-700">
+                          <div className="font-medium">{appointment.doctor_name}</div>
+                          <div className="text-xs text-neutral-500">
+                            {appointment.doctor_specialization}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-700">
+                          <span className="capitalize">{appointment.appointment_type}</span>
+                          <div className="text-xs text-neutral-500">
+                            {appointment.duration} min
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span
+                            className={`px-2 py-1 inline-flex text-xs font-semibold rounded-full ${
+                              appointment.status === 'confirmed'
+                                ? 'bg-green-100 text-green-800'
+                                : appointment.status === 'scheduled'
+                                ? 'bg-blue-100 text-blue-800'
+                                : appointment.status === 'pending'
+                                ? 'bg-yellow-100 text-yellow-800'
+                                : appointment.status === 'in_progress'
+                                ? 'bg-yellow-100 text-yellow-800'
+                                : appointment.status === 'completed'
+                                ? 'bg-gray-100 text-gray-800'
+                                : appointment.status === 'cancelled'
+                                ? 'bg-red-100 text-red-800'
+                                : 'bg-gray-100 text-gray-800'
+                            }`}
+                          >
+                            {appointment.status.charAt(0).toUpperCase() + appointment.status.slice(1)}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          <button 
+                            onClick={() => setSelectedAppointment(appointment)}
+                            className="text-primary-600 hover:text-primary-900 transition-colors"
+                          >
+                            View Details
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
           {/* My Pets List */}
           <div className="bg-white rounded-lg shadow-md p-6">
             <div className="flex justify-between items-center mb-4">
@@ -285,6 +440,14 @@ const CustomerDashboard: React.FC = () => {
         isOpen={!!selectedPet}
         onClose={() => setSelectedPet(null)}
         pet={selectedPet}
+      />
+
+      {/* Appointment Details Modal */}
+      <AppointmentDetailsModal
+        isOpen={!!selectedAppointment}
+        onClose={() => setSelectedAppointment(null)}
+        appointment={selectedAppointment}
+        onAppointmentCancelled={handleAppointmentCancelled}
       />
     </div>
   );

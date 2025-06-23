@@ -267,3 +267,25 @@ export interface AvailableDoctorsResponse {
     time_range: string;
   };
 }
+
+export interface UpcomingAppointment {
+  id: number;
+  doctor_id: number;
+  doctor_name: string;
+  doctor_specialization: string;
+  user_id: number;
+  user_name: string;
+  user_email: string;
+  pet_id: number;
+  pet_name: string;
+  pet_species: string;
+  pet_breed: string;
+  start_datetime: string;
+  end_datetime: string;
+  appointment_type: string;
+  duration: number;
+  notes: string | null;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
