@@ -10,6 +10,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
 import DashboardRouter from './pages/dashboard/DashboardRouter';
+import CustomerMedicalRecords from './pages/dashboard/CustomerMedicalRecords';
 
 function App() {
   return (
@@ -23,13 +24,8 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
-            {/* DashboardRouter, role kontrolünü yapıp ilgili dashboard'ı yüklüyor */}
             <Route path="/dashboard" element={<DashboardRouter />} />
-            {/* Eğer rol bazlı alt rotalar planlanırsa örn:
-            <Route path="/dashboard/doctor" element={<DoctorDashboard />} />
-            <Route path="/dashboard/receptionist" element={<ReceptionistDashboard />} />
-            <Route path="/dashboard/admin" element={<AdminDashboard />} />
-             gibi ekleyebilirsin. */}
+            <Route path="/customer-medical-records" element={<CustomerMedicalRecords />} />
           </Routes>
         </Layout>
       </Router>
