@@ -1,124 +1,180 @@
 // src/pages/dashboard/CustomerDashboard.tsx
-import React, { useEffect, useState } from 'react';
-import { Calendar, Clock, PawPrint, Bell, Phone } from 'lucide-react';
+import React, { useEffect, useState, useCallback } from 'react';
+import {
+  Calendar,
+  Clock,
+  PawPrint,
+  Bell,
+  Phone,
+  Plus,
+  Edit as EditIcon,
+  Trash2,
+} from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../lib/axios';
 import Button from '../../components/common/Button';
 import AddPetModal from '../../components/pets/AddPetModal';
+import EditPetModal, { EditPetFormValues } from '../../components/pets/EditPetModal';
+import DeletePetModal from '../../components/pets/DeletePetModal';
 import PetDetailsModal from '../../components/pets/PetDetailsModal';
-import { Pet, AddPetFormValues } from '../../types'; // Ensure correct imports
+import { Pet, AddPetFormValues } from '../../types';
 
 const CustomerDashboard: React.FC = () => {
   const { user } = useAuth();
+
+  // Dynamic pets from API
   const [pets, setPets] = useState<Pet[]>([]);
   const [loadingPets, setLoadingPets] = useState(true);
 
-  // Add-pet modal state
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-
-  // Details modal state
+  // Modal state
+  const [isAddOpen, setIsAddOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [selectedPet, setSelectedPet] = useState<Pet | null>(null);
 
-  // Fetch the current user's pets
-  const fetchPets = async () => {
+  // Static mock appointments
+  const upcomingAppointments = [
+    {
+      id: 1,
+      date: '2025-03-25',
+      time: '10:30 AM',
+      petName: 'Max',
+      doctor: 'Dr. Sarah Johnson',
+      type: 'Annual Checkup',
+      status: 'Confirmed',
+    },
+    {
+      id: 2,
+      date: '2025-04-02',
+      time: '2:15 PM',
+      petName: 'Luna',
+      doctor: 'Dr. Michael Clark',
+      type: 'Vaccination',
+      status: 'Scheduled',
+    },
+  ];
+
+  // Fetch /pets
+  const fetchPets = useCallback(async () => {
     setLoadingPets(true);
     try {
-      // API Doc: GET /api/pets returns { is_success: true, message: ..., data: { pets: Pet[], total: number } }
-      const res = await api.get<{
-        is_success: boolean;
-        message: string;
-        data: {
-          pets: any[]; // Use any[] initially to handle backend's snake_case properties
-          total: number;
-        };
-      }>('/pets');
-
-      // UNWRAP THE ENVELOPE and MAP KEYS:
-      // Backend uses snake_case (e.g., date_of_birth, owner_id)
-      // Frontend (your types) uses camelCase (e.g., dateOfBirth, ownerId)
-      const fetchedPets: Pet[] = Array.isArray(res.data.data.pets) // Ensure res.data.data.pets is an array
-        ? res.data.data.pets.map((backendPet: any) => ({
-            id: backendPet.id,
-            ownerId: backendPet.owner_id, // Map owner_id to ownerId
-            name: backendPet.name,
-            species: backendPet.species,
-            breed: backendPet.breed,
-            dateOfBirth: backendPet.date_of_birth, // Map date_of_birth to dateOfBirth
-            gender: backendPet.gender,
-            weight: backendPet.weight ? parseFloat(backendPet.weight) : undefined, // Parse weight if it comes as string
-            age: backendPet.age, // Directly from API doc example
-            owner: backendPet.owner, // Direct mapping of the nested owner object
-            color: backendPet.color, // Include if backend provides it
-            microchipNumber: backendPet.microchipNumber, // Include if backend provides it
-            createdAt: backendPet.createdAt, // Adjust if backend uses created_at
-            updatedAt: backendPet.updatedAt, // Adjust if backend uses updated_at
-          }))
-        : [];
-      setPets(fetchedPets);
+      const res = await api.get<{ data: { pets: any[] } }>('/pets');
+      setPets(
+        res.data.data.pets.map((dto: any): Pet => ({
+          id: dto.id,
+          ownerId: dto.owner_id,
+          name: dto.name,
+          species: dto.species,
+          breed: dto.breed,
+          dateOfBirth: dto.date_of_birth,
+          gender: dto.gender,
+          weight: dto.weight != null ? `${dto.weight} kg` : undefined,
+          age: dto.age != null ? `${dto.age} years` : 'Unknown',
+          owner: dto.owner,
+          color: dto.color,
+          microchipNumber: dto.microchipNumber,
+          notes: dto.notes,
+          createdAt: dto.created_at,
+          updatedAt: dto.updated_at,
+          lastVisit: '—',
+        }))
+      );
     } catch (err) {
-      console.error('Error fetching pets:', err);
-      setPets([]); // Ensure pets is an empty array on error to prevent map issues
+      console.error(err);
+      setPets([]);
     } finally {
       setLoadingPets(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    if (user) {
-      fetchPets();
-    } else {
-      setLoadingPets(false);
-      setPets([]);
-    }
-  }, [user]);
+    if (user) fetchPets();
+    else setLoadingPets(false);
+  }, [user, fetchPets]);
 
-  // Handler for adding a new pet
-  const handleAddPet = async (formData: AddPetFormValues) => {
-    try {
-      // API Doc: POST /api/pets
-      // Request Body: { name, species, breed, date_of_birth, weight, gender }
-      // The backend automatically assigns owner_id, so do NOT send it.
-      // Color and microchipNumber are NOT in the user's POST API doc.
-      const payload = {
-        name: formData.name,
-        species: formData.species,
-        breed: formData.breed,
-        // Map frontend camelCase birthDate to backend snake_case date_of_birth
-        date_of_birth: formData.birthDate || undefined,
-        weight: formData.weight || undefined,
-        gender: formData.gender || undefined,
-      };
+  // Handlers
+  const handleAddPet = async (form: AddPetFormValues) => {
+    const payload = {
+      name: form.name,
+      species: form.species,
+      breed: form.breed,
+      date_of_birth: form.birthDate || undefined,
+      weight: form.weight || undefined,
+      gender: form.gender || undefined,
+    };
+    const res = await api.post<{ data: any }>('/pets', payload);
+    const dto = res.data.data;
+    setPets((prev) => [
+      ...prev,
+      {
+        id: dto.id,
+        ownerId: dto.owner_id,
+        name: dto.name,
+        species: dto.species,
+        breed: dto.breed,
+        dateOfBirth: dto.date_of_birth,
+        gender: dto.gender,
+        weight: dto.weight != null ? `${dto.weight} kg` : undefined,
+        age: dto.age != null ? `${dto.age} years` : 'Unknown',
+        owner: dto.owner,
+        color: dto.color,
+        microchipNumber: dto.microchipNumber,
+        notes: dto.notes,
+        createdAt: dto.created_at,
+        updatedAt: dto.updated_at,
+        lastVisit: '—',
+      },
+    ]);
+  };
 
-      const res = await api.post<{
-        is_success: boolean;
-        message: string;
-        data: any; // Use any to allow flexible mapping from snake_case to camelCase
-      }>('/pets', payload);
+  const handleEditPet = async (petId: number, data: EditPetFormValues) => {
+    await api.put(`/pets/${petId}`, {
+      name: data.name,
+      species: data.species,
+      breed: data.breed || undefined,
+      date_of_birth: data.birthDate || undefined,
+      weight: data.weight || undefined,
+      color: data.color || undefined,
+      microchip_number: data.microchipId || undefined,
+      notes: data.notes || undefined,
+    });
+    setPets((prev) =>
+      prev.map((p) =>
+        p.id === petId
+          ? {
+              ...p,
+              name: data.name,
+              species: data.species,
+              breed: data.breed,
+              dateOfBirth: data.birthDate,
+              weight: data.weight != null ? `${data.weight} kg` : undefined,
+              color: data.color,
+              microchipNumber: data.microchipId,
+              notes: data.notes,
+            }
+          : p
+      )
+    );
+  };
 
-      // UNWRAP THE ENVELOPE and MAP KEYS for the newly created pet:
-      const newPetFromBackend: any = res.data.data;
-      const newPet: Pet = {
-        id: newPetFromBackend.id,
-        ownerId: newPetFromBackend.owner_id, // Map owner_id to ownerId
-        name: newPetFromBackend.name,
-        species: newPetFromBackend.species,
-        breed: newPetFromBackend.breed,
-        dateOfBirth: newPetFromBackend.date_of_birth, // Map date_of_birth to dateOfBirth
-        gender: newPetFromBackend.gender,
-        weight: newPetFromBackend.weight ? parseFloat(newPetFromBackend.weight) : undefined, // Parse weight if it comes as string
-        age: newPetFromBackend.age, // Assume backend provides age on creation too
-        owner: newPetFromBackend.owner, // Direct mapping of the nested owner object
-        color: newPetFromBackend.color, // If backend returns it
-        microchipNumber: newPetFromBackend.microchipNumber, // If backend returns it
-        createdAt: newPetFromBackend.createdAt,
-        updatedAt: newPetFromBackend.updatedAt,
-      };
+  const handleDeletePet = async (petId: number) => {
+    await api.delete(`/pets/${petId}`);
+    setPets((prev) => prev.filter((p) => p.id !== petId));
+  };
 
-      setPets((prev) => [...prev, newPet]);
-    } catch (err) {
-      console.error('Error adding pet:', err);
-      throw err;
-    }
+  // Modal openers
+  const openDetails = (pet: Pet) => {
+    setSelectedPet(pet);
+    setIsDetailsOpen(true);
+  };
+  const openEdit = (pet: Pet) => {
+    setSelectedPet(pet);
+    setIsEditOpen(true);
+  };
+  const openDelete = (pet: Pet) => {
+    setSelectedPet(pet);
+    setIsDeleteOpen(true);
   };
 
   return (
@@ -154,8 +210,10 @@ const CustomerDashboard: React.FC = () => {
                 <Calendar className="h-6 w-6 text-secondary-600" />
               </div>
               <div>
-                <p className="text-sm text-neutral-600">Next Visit</p>
-                <p className="text-2xl font-bold text-neutral-800">TBD</p>
+                <p className="text-sm text-neutral-600">Upcoming Visits</p>
+                <p className="text-2xl font-bold text-neutral-800">
+                  {upcomingAppointments.length}
+                </p>
               </div>
             </div>
             <div className="bg-white rounded-lg shadow-md p-6 flex items-center">
@@ -164,71 +222,174 @@ const CustomerDashboard: React.FC = () => {
               </div>
               <div>
                 <p className="text-sm text-neutral-600">Last Visit</p>
-                <p className="text-2xl font-bold text-neutral-800">—</p>
+                <p className="text-2xl font-bold text-neutral-800">2w ago</p>
               </div>
             </div>
           </div>
 
-          {/* My Pets List */}
+          {/* Upcoming Appointments */}
           <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="flex justify-between items-center mb-4">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold text-neutral-800 flex items-center">
+                <Calendar className="mr-2 h-5 w-5 text-primary-500" />
+                Upcoming Appointments
+              </h2>
+              <Button size="sm">Schedule Visit</Button>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-neutral-200">
+                <thead className="bg-neutral-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                      Date & Time
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                      Pet
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                      Doctor
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                      Type
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-neutral-200">
+                  {upcomingAppointments.map((appointment) => (
+                    <tr key={appointment.id}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-800">
+                        <div className="font-medium">{appointment.date}</div>
+                        <div className="text-neutral-500">{appointment.time}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-700">
+                        {appointment.petName}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-700">
+                        {appointment.doctor}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-700">
+                        {appointment.type}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span
+                          className={`px-2 py-1 inline-flex text-xs font-semibold rounded-full ${
+                            appointment.status === 'Confirmed'
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-blue-100 text-blue-800'
+                          }`}
+                        >
+                          {appointment.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <button className="text-primary-600 hover:text-primary-900">
+                          View Details
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* My Pets */}
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold text-neutral-800 flex items-center">
                 <PawPrint className="mr-2 h-5 w-5 text-primary-500" />
                 My Pets
               </h2>
-              <Button size="sm" onClick={() => setIsAddModalOpen(true)}>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setIsAddOpen(true)}
+                icon={<Plus size={16} />}
+              >
                 Add Pet
               </Button>
             </div>
 
-            {loadingPets ? (
-              <p className="text-neutral-600">Loading pets...</p>
-            ) : pets.length === 0 ? (
-              <p className="text-neutral-600">You have no pets yet.</p>
-            ) : (
-              <ul className="space-y-4">
-                {pets.map((pet) => (
-                  <li
-                    key={pet.id}
-                    className="flex justify-between items-center border rounded-lg p-4 hover:shadow cursor-pointer"
-                    onClick={() => setSelectedPet(pet)}
-                  >
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {pets.map((pet) => (
+                <div
+                  key={pet.id}
+                  className="border rounded-lg p-4 cursor-pointer hover:shadow-md transition-shadow relative group"
+                  onClick={() => openDetails(pet)}
+                >
+                  {/* Edit/Delete overlay */}
+                  <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex space-x-1">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openEdit(pet);
+                      }}
+                      className="p-1.5 bg-white shadow-md rounded-full text-neutral-600 hover:text-primary-600 hover:bg-primary-50 transition-colors"
+                    >
+                      <EditIcon size={14} />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openDelete(pet);
+                      }}
+                      className="p-1.5 bg-white shadow-md rounded-full text-neutral-600 hover:text-red-600 hover:bg-red-50 transition-colors"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+
+                  <div className="flex justify-between items-start mb-4">
                     <div>
-                      <h3 className="text-lg font-medium text-neutral-800">
-                        {pet.name}
-                      </h3>
-                      <p className="text-sm text-neutral-600">
-                        {pet.species.charAt(0).toUpperCase() +
-                          pet.species.slice(1)}, {pet.breed || 'Unknown breed'}
-                      </p>
-                      {/* Use pet.dateOfBirth as per your types.ts */}
-                      {pet.dateOfBirth && (
-                         <p className="text-xs text-neutral-500">
-                            Born: {new Date(pet.dateOfBirth).toLocaleDateString()}
-                        </p>
-                      )}
-                       {pet.weight !== undefined && (
-                        <p className="text-xs text-neutral-500">
-                           Weight: {pet.weight} kg
-                       </p>
-                       )}
-                       {pet.gender && (
-                        <p className="text-xs text-neutral-500">
-                           Gender: {pet.gender.charAt(0).toUpperCase() + pet.gender.slice(1)}
-                        </p>
-                       )}
+                      <h3 className="text-lg font-bold text-neutral-800">{pet.name}</h3>
+                      <p className="text-neutral-600">{pet.breed}</p>
                     </div>
+                    <span className="px-2 py-1 text-xs font-semibold rounded-full bg-primary-100 text-primary-800">
+                      {pet.species}
+                    </span>
+                  </div>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-neutral-600">Age:</span>
+                      <span className="text-neutral-800">{pet.age}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-neutral-600">Last Visit:</span>
+                      <span className="text-neutral-800">{pet.lastVisit}</span>
+                    </div>
+                    {pet.weight && (
+                      <div className="flex justify-between">
+                        <span className="text-neutral-600">Weight:</span>
+                        <span className="text-neutral-800">{pet.weight}</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="mt-4 flex justify-end">
                     <Button size="sm" variant="outline">
-                      Details
+                      View Details
                     </Button>
-                  </li>
-                ))}
-              </ul>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {pets.length === 0 && (
+              <div className="text-center py-8">
+                <PawPrint className="h-12 w-12 text-neutral-400 mx-auto mb-4" />
+                <p className="text-neutral-600 mb-4">You haven't added any pets yet.</p>
+                <Button onClick={() => setIsAddOpen(true)}>Add Your First Pet</Button>
+              </div>
             )}
           </div>
         </div>
 
-        {/* Sidebar */}
+        {/* Right Sidebar (restored in full) */}
         <aside className="space-y-6">
           {/* Profile Card */}
           <div className="bg-white rounded-lg shadow-md p-6">
@@ -237,9 +398,7 @@ const CustomerDashboard: React.FC = () => {
                 {user?.name.charAt(0)}
               </div>
               <div className="ml-4">
-                <h2 className="text-xl font-bold text-neutral-800">
-                  {user?.name}
-                </h2>
+                <h2 className="text-xl font-bold text-neutral-800">{user?.name}</h2>
                 <p className="text-neutral-600">Pet Parent</p>
               </div>
             </div>
@@ -248,44 +407,80 @@ const CustomerDashboard: React.FC = () => {
                 <strong>Email:</strong> {user?.email}
               </div>
               <div>
-                <strong>Joined:</strong>{' '}
-                {user?.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}
+                <strong>Member Since:</strong>{' '}
+                {user?.createdAt && new Date(user.createdAt).toLocaleDateString()}
               </div>
+            </div>
+          </div>
+
+          {/* Quick Actions */}
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h2 className="text-xl font-bold text-neutral-800 mb-4">Quick Actions</h2>
+            <div className="space-y-3">
+              <Button fullWidth>Schedule Appointment</Button>
+              <Button fullWidth variant="outline">
+                Request Prescription Refill
+              </Button>
+              <Button fullWidth variant="outline">
+                Message Your Vet
+              </Button>
+              <Button fullWidth variant="outline">
+                View Medical Records
+              </Button>
             </div>
           </div>
 
           {/* Notifications */}
           <div className="bg-white rounded-lg shadow-md p-6">
-            <h3 className="text-lg font-bold text-neutral-800 mb-4 flex items-center">
-              <Bell className="mr-2 h-5 w-5 text-primary-500" />
-              Notifications
-            </h3>
-            <p className="text-neutral-600">No new notifications.</p>
+            <h2 className="text-xl font-bold text-neutral-800 mb-4 flex items-center">
+              <Bell className="mr-2 h-5 w-5 text-primary-500" /> Notifications
+            </h2>
+
+            <div className="space-y-4">
+              <div className="border-l-4 border-primary-500 pl-4 py-2">
+                <h3 className="font-medium text-neutral-800">Vaccination Due</h3>
+                <p className="text-sm text-neutral-600">
+                  Max's annual vaccinations are due in 2 weeks
+                </p>
+                <button className="text-sm text-primary-600 font-medium mt-1">
+                  Schedule Now
+                </button>
+              </div>
+
+              <div className="border-l-4 border-secondary-500 pl-4 py-2">
+                <h3 className="font-medium text-neutral-800">Prescription Ready</h3>
+                <p className="text-sm text-neutral-600">
+                  Luna's medication is ready for pickup
+                </p>
+                <button className="text-sm text-primary-600 font-medium mt-1">
+                  View Details
+                </button>
+              </div>
+            </div>
           </div>
 
           {/* Emergency Contact */}
-          <div className="bg-red-50 rounded-lg shadow-inner p-6">
-            <h3 className="text-lg font-bold text-red-800 mb-2">Emergency</h3>
-            <div className="flex items-center text-red-700 mb-1">
-              <Phone className="h-4 w-4 mr-2" /> (555) 987-6543
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h2 className="text-xl font-bold text-neutral-800 mb-4 flex items-center">
+              <Phone className="mr-2 h-5 w-5 text-primary-500" /> Emergency Contact
+            </h2>
+
+            <div className="bg-red-50 border border-red-100 rounded-lg p-4">
+              <p className="text-red-800 font-medium mb-2">24/7 Emergency Care</p>
+              <p className="text-red-700 text-sm mb-2">
+                If you have an emergency outside of our regular hours:
+              </p>
+              <p className="text-red-800 font-bold">(555) 987-6543</p>
             </div>
           </div>
         </aside>
       </div>
 
-      {/* Add Pet Modal */}
-      <AddPetModal
-        isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
-        onAddPet={handleAddPet}
-      />
-
-      {/* Pet Details Modal */}
-      <PetDetailsModal
-        isOpen={!!selectedPet}
-        onClose={() => setSelectedPet(null)}
-        pet={selectedPet}
-      />
+      {/* Modals */}
+      <AddPetModal isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} onAddPet={handleAddPet} />
+      <EditPetModal isOpen={isEditOpen} onClose={() => setIsEditOpen(false)} onEditPet={handleEditPet} pet={selectedPet} />
+      <DeletePetModal isOpen={isDeleteOpen} onClose={() => setIsDeleteOpen(false)} onDeletePet={handleDeletePet} pet={selectedPet} />
+      <PetDetailsModal isOpen={isDetailsOpen} onClose={() => setIsDetailsOpen(false)} pet={selectedPet} onEditPet={openEdit} onDeletePet={openDelete} />
     </div>
   );
 };

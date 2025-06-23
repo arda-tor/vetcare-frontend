@@ -1,4 +1,7 @@
 // src/types.ts
+
+import { ReactNode } from "react";
+
 /** ────────────────────────────────────────────────────────────────
  * Roles & Auth
  * ────────────────────────────────────────────────────────────────
@@ -64,6 +67,7 @@ export interface AlertProps {
  */
 
 export interface Pet {
+  lastVisit: ReactNode;
   id: number;
   // ownerId is frontend's camelCase. The backend sends owner_id.
   // We will map this when receiving from backend.
