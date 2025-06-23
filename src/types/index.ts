@@ -222,3 +222,48 @@ export interface DoctorProfile {
 
   user?: User;
 }
+
+export interface TimeSlot {
+  time: string;
+  time_range: string;
+  available_count: number;
+  total_doctors: number;
+}
+
+export interface CalendarDay {
+  date: string;
+  day_name: string;
+  available_slots: TimeSlot[];
+  total_available_slots: number;
+}
+
+export interface CalendarResponse {
+  is_success: boolean;
+  message: string;
+  data: {
+    calendar: CalendarDay[];
+    date_range: {
+      start: string;
+      end: string;
+    };
+  };
+}
+
+export interface AvailableDoctor {
+  id: number;
+  name: string;
+  specialization: string;
+  email?: string;
+  license_number?: string;
+}
+
+export interface AvailableDoctorsResponse {
+  is_success: boolean;
+  message: string;
+  data: {
+    doctors: AvailableDoctor[];
+    date: string;
+    time: string;
+    time_range: string;
+  };
+}
