@@ -1,309 +1,182 @@
-// src/dashboard/CustomerDashboard.tsx
+// src/pages/dashboard/CustomerDashboard.tsx
 import React, { useEffect, useState } from 'react';
 import { Calendar, Clock, PawPrint, Bell, Phone } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import Button from '../../components/common/Button';
 import api from '../../lib/axios';
-
-// -------------- TYPE TANIMLARI (types.ts içinde halihazır)
-// export interface Patient { ... }           // (Müşteri değil, hayvan. Gerekirse burda Pet interface ekleyin.)
-// export interface Pet { 
-//   id: number; 
-//   name: string; 
-//   species: string; 
-//   breed?: string; 
-//   birthDate?: string; 
-//   ownerName: string; 
-//   ownerEmail: string; 
-//   ownerPhone: string; 
-//   createdAt: string; 
-//   updatedAt: string;
-// }
-
-// export interface Appointment { ... }
-// O nedenle bu dashboard’da sadece Pet arayüzünü kullanacağız.
-
-interface Pet {
-  id: number;
-  name: string;
-  species: string;
-  breed?: string;
-  birthDate?: string;
-  ownerName: string;
-  ownerEmail: string;
-  ownerPhone: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-// Yeni pet eklemek için form değerleri:
-interface NewPetFormValues {
-  name: string;
-  species: string;
-  breed?: string;
-  birthDate?: string;
-  ownerName: string;
-  ownerEmail: string;
-  ownerPhone: string;
-}
+import Button from '../../components/common/Button';
+import AddPetModal from '../../components/pets/AddPetModal';
+import PetDetailsModal from '../../components/pets/PetDetailsModal';
+import { Pet, AddPetFormValues } from '../../types'; // Ensure correct imports
 
 const CustomerDashboard: React.FC = () => {
   const { user } = useAuth();
   const [pets, setPets] = useState<Pet[]>([]);
-  const [loadingPets, setLoadingPets] = useState<boolean>(true);
+  const [loadingPets, setLoadingPets] = useState(true);
 
-  // Form state
-  const [showForm, setShowForm] = useState<boolean>(false);
-  const [newPetData, setNewPetData] = useState<NewPetFormValues>({
-    name: '',
-    species: '',
-    breed: '',
-    birthDate: '',
-    ownerName: user?.name || '',
-    ownerEmail: user?.email || '',
-    ownerPhone: '',
-  });
-  const [formError, setFormError] = useState<string | null>(null);
-  const [formSubmitting, setFormSubmitting] = useState<boolean>(false);
+  // Add-pet modal state
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
-  // 1) Mevcut pet profilini backend'den çek:
-  useEffect(() => {
-    const fetchPets = async () => {
-      try {
-        setLoadingPets(true);
-        // GET /api/pets → kullanıcıya ait pet'leri dönecek
-        // Eğer API “ownerId” bazlı filtre istiyorsa query param ekle: /api/pets?ownerId={user.id}
-        const res = await api.get<Pet[]>('/pets');
-        // backend, sadece bu user’ın pet’lerini döndürüyorsa, direkt set edilir.
-        setPets(res.data);
-      } catch (err) {
-        console.error('Error fetching pets:', err);
-      } finally {
-        setLoadingPets(false);
-      }
-    };
+  // Details modal state
+  const [selectedPet, setSelectedPet] = useState<Pet | null>(null);
 
-    fetchPets();
-  }, [user]);
+  // Fetch the current user's pets
+  const fetchPets = async () => {
+    setLoadingPets(true);
+    try {
+      // API Doc: GET /api/pets returns { is_success: true, message: ..., data: { pets: Pet[], total: number } }
+      const res = await api.get<{
+        is_success: boolean;
+        message: string;
+        data: {
+          pets: any[]; // Use any[] initially to handle backend's snake_case properties
+          total: number;
+        };
+      }>('/pets');
 
-  // 2) Formdaki input değişimlerini yönet
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
-    const { name, value } = e.target;
-    setNewPetData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+      // UNWRAP THE ENVELOPE and MAP KEYS:
+      // Backend uses snake_case (e.g., date_of_birth, owner_id)
+      // Frontend (your types) uses camelCase (e.g., dateOfBirth, ownerId)
+      const fetchedPets: Pet[] = Array.isArray(res.data.data.pets) // Ensure res.data.data.pets is an array
+        ? res.data.data.pets.map((backendPet: any) => ({
+            id: backendPet.id,
+            ownerId: backendPet.owner_id, // Map owner_id to ownerId
+            name: backendPet.name,
+            species: backendPet.species,
+            breed: backendPet.breed,
+            dateOfBirth: backendPet.date_of_birth, // Map date_of_birth to dateOfBirth
+            gender: backendPet.gender,
+            weight: backendPet.weight ? parseFloat(backendPet.weight) : undefined, // Parse weight if it comes as string
+            age: backendPet.age, // Directly from API doc example
+            owner: backendPet.owner, // Direct mapping of the nested owner object
+            color: backendPet.color, // Include if backend provides it
+            microchipNumber: backendPet.microchipNumber, // Include if backend provides it
+            createdAt: backendPet.createdAt, // Adjust if backend uses created_at
+            updatedAt: backendPet.updatedAt, // Adjust if backend uses updated_at
+          }))
+        : [];
+      setPets(fetchedPets);
+    } catch (err) {
+      console.error('Error fetching pets:', err);
+      setPets([]); // Ensure pets is an empty array on error to prevent map issues
+    } finally {
+      setLoadingPets(false);
+    }
   };
 
-  // 3) Yeni pet ekleme işlemi
-  const handleAddPet = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setFormError(null);
-
-    // Basit bir validasyon: zorunlu alanlar
-    if (!newPetData.name.trim() || !newPetData.species.trim() || !newPetData.ownerPhone.trim()) {
-      setFormError('Pet name, species ve owner phone zorunludur.');
-      return;
+  useEffect(() => {
+    if (user) {
+      fetchPets();
+    } else {
+      setLoadingPets(false);
+      setPets([]);
     }
+  }, [user]);
 
+  // Handler for adding a new pet
+  const handleAddPet = async (formData: AddPetFormValues) => {
     try {
-      setFormSubmitting(true);
-      // POST /api/pets → newPetData 
-      const res = await api.post<Pet>('/pets', newPetData);
-      // Backend’in yeni eklenen pet’i döndüğünü varsayıyoruz
-      setPets((prev) => [...prev, res.data]);
-      // Formu sıfırla ve gizle
-      setNewPetData({
-        name: '',
-        species: '',
-        breed: '',
-        birthDate: '',
-        ownerName: user?.name || '',
-        ownerEmail: user?.email || '',
-        ownerPhone: '',
-      });
-      setShowForm(false);
-    } catch (err: any) {
+      // API Doc: POST /api/pets
+      // Request Body: { name, species, breed, date_of_birth, weight, gender }
+      // The backend automatically assigns owner_id, so do NOT send it.
+      // Color and microchipNumber are NOT in the user's POST API doc.
+      const payload = {
+        name: formData.name,
+        species: formData.species,
+        breed: formData.breed,
+        // Map frontend camelCase birthDate to backend snake_case date_of_birth
+        date_of_birth: formData.birthDate || undefined,
+        weight: formData.weight || undefined,
+        gender: formData.gender || undefined,
+      };
+
+      const res = await api.post<{
+        is_success: boolean;
+        message: string;
+        data: any; // Use any to allow flexible mapping from snake_case to camelCase
+      }>('/pets', payload);
+
+      // UNWRAP THE ENVELOPE and MAP KEYS for the newly created pet:
+      const newPetFromBackend: any = res.data.data;
+      const newPet: Pet = {
+        id: newPetFromBackend.id,
+        ownerId: newPetFromBackend.owner_id, // Map owner_id to ownerId
+        name: newPetFromBackend.name,
+        species: newPetFromBackend.species,
+        breed: newPetFromBackend.breed,
+        dateOfBirth: newPetFromBackend.date_of_birth, // Map date_of_birth to dateOfBirth
+        gender: newPetFromBackend.gender,
+        weight: newPetFromBackend.weight ? parseFloat(newPetFromBackend.weight) : undefined, // Parse weight if it comes as string
+        age: newPetFromBackend.age, // Assume backend provides age on creation too
+        owner: newPetFromBackend.owner, // Direct mapping of the nested owner object
+        color: newPetFromBackend.color, // If backend returns it
+        microchipNumber: newPetFromBackend.microchipNumber, // If backend returns it
+        createdAt: newPetFromBackend.createdAt,
+        updatedAt: newPetFromBackend.updatedAt,
+      };
+
+      setPets((prev) => [...prev, newPet]);
+    } catch (err) {
       console.error('Error adding pet:', err);
-      setFormError('Pet eklenirken bir hata oluştu. Lütfen tekrar deneyin.');
-    } finally {
-      setFormSubmitting(false);
+      throw err;
     }
   };
 
   return (
     <div className="p-6">
+      {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-display font-bold text-neutral-800 mb-2">
           Pet Parent Dashboard
         </h1>
         <p className="text-neutral-600">
-          Welcome back, {user?.name}. Here's an overview of your pets' health and upcoming appointments.
+          Welcome back, {user?.name}. Here’s an overview of your pets.
         </p>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        {/* Main Content */}
+        {/* Main Column */}
         <div className="xl:col-span-2 space-y-6">
           {/* Quick Stats */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <div className="flex items-center">
-                <div className="rounded-full bg-primary-100 p-3 mr-4">
-                  <PawPrint className="h-6 w-6 text-primary-600" />
-                </div>
-                <div>
-                  <p className="text-sm text-neutral-600">Active Pets</p>
-                  <p className="text-2xl font-bold text-neutral-800">{pets.length}</p>
-                </div>
+            <div className="bg-white rounded-lg shadow-md p-6 flex items-center">
+              <div className="rounded-full bg-primary-100 p-3 mr-4">
+                <PawPrint className="h-6 w-6 text-primary-600" />
+              </div>
+              <div>
+                <p className="text-sm text-neutral-600">My Pets</p>
+                <p className="text-2xl font-bold text-neutral-800">
+                  {loadingPets ? '…' : pets.length}
+                </p>
               </div>
             </div>
-
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <div className="flex items-center">
-                <div className="rounded-full bg-secondary-100 p-3 mr-4">
-                  <Calendar className="h-6 w-6 text-secondary-600" />
-                </div>
-                <div>
-                  <p className="text-sm text-neutral-600">Upcoming Visits</p>
-                  {/* Kendi mantığına göre appointments API’si ile güncelleyebilirsin */}
-                  <p className="text-2xl font-bold text-neutral-800">2</p>
-                </div>
+            <div className="bg-white rounded-lg shadow-md p-6 flex items-center">
+              <div className="rounded-full bg-secondary-100 p-3 mr-4">
+                <Calendar className="h-6 w-6 text-secondary-600" />
+              </div>
+              <div>
+                <p className="text-sm text-neutral-600">Next Visit</p>
+                <p className="text-2xl font-bold text-neutral-800">TBD</p>
               </div>
             </div>
-
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <div className="flex items-center">
-                <div className="rounded-full bg-accent-100 p-3 mr-4">
-                  <Clock className="h-6 w-6 text-accent-600" />
-                </div>
-                <div>
-                  <p className="text-sm text-neutral-600">Last Visit</p>
-                  <p className="text-2xl font-bold text-neutral-800">2w ago</p>
-                </div>
+            <div className="bg-white rounded-lg shadow-md p-6 flex items-center">
+              <div className="rounded-full bg-accent-100 p-3 mr-4">
+                <Clock className="h-6 w-6 text-accent-600" />
+              </div>
+              <div>
+                <p className="text-sm text-neutral-600">Last Visit</p>
+                <p className="text-2xl font-bold text-neutral-800">—</p>
               </div>
             </div>
           </div>
 
-          {/* Upcoming Appointments */}
+          {/* My Pets List */}
           <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold text-neutral-800 flex items-center">
-                <Calendar className="mr-2 h-5 w-5 text-primary-500" />
-                Upcoming Appointments
-              </h2>
-              <Button size="sm">Schedule Visit</Button>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-neutral-200">
-                <thead className="bg-neutral-50">
-                  <tr>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider"
-                    >
-                      Date & Time
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider"
-                    >
-                      Pet
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider"
-                    >
-                      Doctor
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider"
-                    >
-                      Type
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider"
-                    >
-                      Status
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider"
-                    >
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-neutral-200">
-                  {/* Mock veriyi bırakıyoruz; gerçek data için backend API’sini entegre et */}
-                  <tr>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-800">
-                      <div className="font-medium">2025-03-25</div>
-                      <div className="text-neutral-500">10:30 AM</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-700">
-                      Max
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-700">
-                      Dr. Sarah Johnson
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-700">
-                      Annual Checkup
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                        Confirmed
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <button className="text-primary-600 hover:text-primary-900">
-                        View Details
-                      </button>
-                    </td>
-                  </tr>
-                  <tr className="bg-neutral-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-800">
-                      <div className="font-medium">2025-04-02</div>
-                      <div className="text-neutral-500">2:15 PM</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-700">
-                      Luna
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-700">
-                      Dr. Michael Clark
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-700">
-                      Vaccination
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                        Scheduled
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <button className="text-primary-600 hover:text-primary-900">
-                        View Details
-                      </button>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Pet Profiles */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="flex justify-between items-center mb-6">
+            <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-bold text-neutral-800 flex items-center">
                 <PawPrint className="mr-2 h-5 w-5 text-primary-500" />
                 My Pets
               </h2>
-              <Button size="sm" onClick={() => setShowForm(true)}>
+              <Button size="sm" onClick={() => setIsAddModalOpen(true)}>
                 Add Pet
               </Button>
             </div>
@@ -313,214 +186,106 @@ const CustomerDashboard: React.FC = () => {
             ) : pets.length === 0 ? (
               <p className="text-neutral-600">You have no pets yet.</p>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <ul className="space-y-4">
                 {pets.map((pet) => (
-                  <div key={pet.id} className="border rounded-lg p-4">
-                    <div className="flex justify-between items-start mb-2">
-                      <div>
-                        <h3 className="text-lg font-bold text-neutral-800">{pet.name}</h3>
-                        <p className="text-neutral-600">{pet.breed}</p>
-                      </div>
-                      <span className="px-2 py-1 text-xs font-semibold rounded-full bg-primary-100 text-primary-800">
-                        {pet.species}
-                      </span>
+                  <li
+                    key={pet.id}
+                    className="flex justify-between items-center border rounded-lg p-4 hover:shadow cursor-pointer"
+                    onClick={() => setSelectedPet(pet)}
+                  >
+                    <div>
+                      <h3 className="text-lg font-medium text-neutral-800">
+                        {pet.name}
+                      </h3>
+                      <p className="text-sm text-neutral-600">
+                        {pet.species.charAt(0).toUpperCase() +
+                          pet.species.slice(1)}, {pet.breed || 'Unknown breed'}
+                      </p>
+                      {/* Use pet.dateOfBirth as per your types.ts */}
+                      {pet.dateOfBirth && (
+                         <p className="text-xs text-neutral-500">
+                            Born: {new Date(pet.dateOfBirth).toLocaleDateString()}
+                        </p>
+                      )}
+                       {pet.weight !== undefined && (
+                        <p className="text-xs text-neutral-500">
+                           Weight: {pet.weight} kg
+                       </p>
+                       )}
+                       {pet.gender && (
+                        <p className="text-xs text-neutral-500">
+                           Gender: {pet.gender.charAt(0).toUpperCase() + pet.gender.slice(1)}
+                        </p>
+                       )}
                     </div>
-                    <div className="space-y-1 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-neutral-600">Age:</span>
-                        <span className="text-neutral-800">{pet.birthDate || 'N/A'}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-neutral-600">Owner Phone:</span>
-                        <span className="text-neutral-800">{pet.ownerPhone}</span>
-                      </div>
-                    </div>
-                  </div>
+                    <Button size="sm" variant="outline">
+                      Details
+                    </Button>
+                  </li>
                 ))}
-              </div>
-            )}
-
-            {/* Yeni pet ekleme formu modal veya conditional area */}
-            {showForm && (
-              <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
-                <div className="bg-white rounded-lg shadow-md p-6 w-full max-w-lg">
-                  <h2 className="text-xl font-bold text-neutral-800 mb-4">Add New Pet</h2>
-                  {formError && (
-                    <p className="text-red-600 text-sm mb-3">{formError}</p>
-                  )}
-                  <form onSubmit={handleAddPet} className="space-y-4">
-                    <div>
-                      <label className="block text-sm text-neutral-700 mb-1">
-                        Pet Name <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        name="name"
-                        value={newPetData.name}
-                        onChange={handleInputChange}
-                        className="w-full border border-neutral-300 rounded p-2"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm text-neutral-700 mb-1">
-                        Species <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        name="species"
-                        value={newPetData.species}
-                        onChange={handleInputChange}
-                        className="w-full border border-neutral-300 rounded p-2"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm text-neutral-700 mb-1">
-                        Breed
-                      </label>
-                      <input
-                        type="text"
-                        name="breed"
-                        value={newPetData.breed}
-                        onChange={handleInputChange}
-                        className="w-full border border-neutral-300 rounded p-2"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm text-neutral-700 mb-1">
-                        Birth Date
-                      </label>
-                      <input
-                        type="date"
-                        name="birthDate"
-                        value={newPetData.birthDate}
-                        onChange={handleInputChange}
-                        className="w-full border border-neutral-300 rounded p-2"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm text-neutral-700 mb-1">
-                        Owner Phone <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        name="ownerPhone"
-                        value={newPetData.ownerPhone}
-                        onChange={handleInputChange}
-                        className="w-full border border-neutral-300 rounded p-2"
-                        required
-                      />
-                    </div>
-                    <div className="flex justify-end space-x-2 mt-4">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setFormError(null);
-                          setShowForm(false);
-                        }}
-                        className="px-4 py-2 bg-neutral-200 rounded hover:bg-neutral-300"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="submit"
-                        disabled={formSubmitting}
-                        className={`px-4 py-2 rounded ${
-                          formSubmitting
-                            ? 'bg-primary-300 cursor-not-allowed'
-                            : 'bg-primary-600 hover:bg-primary-700 text-white'
-                        }`}
-                      >
-                        {formSubmitting ? 'Saving...' : 'Save'}
-                      </button>
-                    </div>
-                  </form>
-                </div>
-              </div>
+              </ul>
             )}
           </div>
         </div>
 
         {/* Sidebar */}
-        <div className="space-y-6">
+        <aside className="space-y-6">
           {/* Profile Card */}
           <div className="bg-white rounded-lg shadow-md p-6">
             <div className="flex items-center mb-4">
-              <div className="w-16 h-16 rounded-full bg-primary-100 text-primary-600 flex items-center justify-center text-xl font-bold">
+              <div className="w-16 h-16 rounded-full bg-primary-100 flex items-center justify-center text-xl font-bold text-primary-600">
                 {user?.name.charAt(0)}
               </div>
               <div className="ml-4">
-                <h2 className="text-xl font-bold text-neutral-800">{user?.name}</h2>
+                <h2 className="text-xl font-bold text-neutral-800">
+                  {user?.name}
+                </h2>
                 <p className="text-neutral-600">Pet Parent</p>
               </div>
             </div>
-            <div className="border-t border-neutral-200 pt-4 mt-4">
-              <div className="grid grid-cols-2 gap-2 text-sm">
-                <p className="text-neutral-600">Email:</p>
-                <p className="text-neutral-800 font-medium">{user?.email}</p>
-                <p className="text-neutral-600">Member Since:</p>
-                <p className="text-neutral-800 font-medium">January 2025</p>
+            <div className="border-t border-neutral-200 pt-4 mt-4 text-sm text-neutral-700 space-y-1">
+              <div>
+                <strong>Email:</strong> {user?.email}
               </div>
-            </div>
-          </div>
-
-          {/* Quick Actions */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-bold text-neutral-800 mb-4">Quick Actions</h2>
-            <div className="space-y-3">
-              <Button fullWidth>Schedule Appointment</Button>
-              <Button fullWidth variant="outline">Request Prescription Refill</Button>
-              <Button fullWidth variant="outline">Message Your Vet</Button>
-              <Button fullWidth variant="outline">View Medical Records</Button>
+              <div>
+                <strong>Joined:</strong>{' '}
+                {user?.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}
+              </div>
             </div>
           </div>
 
           {/* Notifications */}
           <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-bold text-neutral-800 mb-4 flex items-center">
+            <h3 className="text-lg font-bold text-neutral-800 mb-4 flex items-center">
               <Bell className="mr-2 h-5 w-5 text-primary-500" />
               Notifications
-            </h2>
-
-            <div className="space-y-4">
-              <div className="border-l-4 border-primary-500 pl-4 py-2">
-                <h3 className="font-medium text-neutral-800">Vaccination Due</h3>
-                <p className="text-sm text-neutral-600">Max's annual vaccinations are due in 2 weeks</p>
-                <button className="text-sm text-primary-600 font-medium mt-1">
-                  Schedule Now
-                </button>
-              </div>
-
-              <div className="border-l-4 border-secondary-500 pl-4 py-2">
-                <h3 className="font-medium text-neutral-800">Prescription Ready</h3>
-                <p className="text-sm text-neutral-600">Luna's medication is ready for pickup</p>
-                <button className="text-sm text-primary-600 font-medium mt-1">
-                  View Details
-                </button>
-              </div>
-            </div>
+            </h3>
+            <p className="text-neutral-600">No new notifications.</p>
           </div>
 
           {/* Emergency Contact */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-bold text-neutral-800 mb-4 flex items-center">
-              <Phone className="mr-2 h-5 w-5 text-primary-500" />
-              Emergency Contact
-            </h2>
-
-            <div className="bg-red-50 border border-red-100 rounded-lg p-4">
-              <p className="text-red-800 font-medium mb-2">24/7 Emergency Care</p>
-              <p className="text-red-700 text-sm mb-2">
-                If you have an emergency outside of our regular hours:
-              </p>
-              <p className="text-red-800 font-bold">
-                (555) 987-6543
-              </p>
+          <div className="bg-red-50 rounded-lg shadow-inner p-6">
+            <h3 className="text-lg font-bold text-red-800 mb-2">Emergency</h3>
+            <div className="flex items-center text-red-700 mb-1">
+              <Phone className="h-4 w-4 mr-2" /> (555) 987-6543
             </div>
           </div>
-        </div>
+        </aside>
       </div>
+
+      {/* Add Pet Modal */}
+      <AddPetModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onAddPet={handleAddPet}
+      />
+
+      {/* Pet Details Modal */}
+      <PetDetailsModal
+        isOpen={!!selectedPet}
+        onClose={() => setSelectedPet(null)}
+        pet={selectedPet}
+      />
     </div>
   );
 };
