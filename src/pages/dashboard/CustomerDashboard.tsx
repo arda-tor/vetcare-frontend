@@ -8,9 +8,11 @@ import AddPetModal from '../../components/pets/AddPetModal';
 import PetDetailsModal from '../../components/pets/PetDetailsModal';
 import AppointmentDetailsModal from '../../components/appointments/AppointmentDetailsModal';
 import { Pet, AddPetFormValues, UpcomingAppointment } from '../../types'; // Ensure correct imports
+import { useNavigate } from 'react-router-dom';
 
 const CustomerDashboard: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [pets, setPets] = useState<Pet[]>([]);
   const [loadingPets, setLoadingPets] = useState(true);
   
@@ -194,8 +196,10 @@ const CustomerDashboard: React.FC = () => {
                 <Calendar className="h-6 w-6 text-secondary-600" />
               </div>
               <div>
-                <p className="text-sm text-neutral-600">Next Visit</p>
-                <p className="text-2xl font-bold text-neutral-800">TBD</p>
+                <p className="text-sm text-neutral-600">Upcoming Appointments</p>
+                <p className="text-2xl font-bold text-neutral-800">
+                  {loadingAppointments ? '…' : upcomingAppointments.length}
+                </p>
               </div>
             </div>
             <div className="bg-white rounded-lg shadow-md p-6 flex items-center">
@@ -214,7 +218,7 @@ const CustomerDashboard: React.FC = () => {
                 <Calendar className="mr-2 h-5 w-5 text-primary-500" />
                 Upcoming Appointments
               </h2>
-              <Button size="sm">Schedule Visit</Button>
+              <Button size="sm" onClick={() => navigate('/calendar')}>Schedule Visit</Button>
             </div>
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-neutral-200">
