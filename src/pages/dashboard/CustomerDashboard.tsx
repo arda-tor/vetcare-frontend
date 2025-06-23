@@ -1,5 +1,6 @@
 // src/pages/dashboard/CustomerDashboard.tsx
 import React, { useEffect, useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Calendar,
   Clock,
@@ -17,14 +18,18 @@ import AddPetModal from '../../components/pets/AddPetModal';
 import EditPetModal, { EditPetFormValues } from '../../components/pets/EditPetModal';
 import DeletePetModal from '../../components/pets/DeletePetModal';
 import PetDetailsModal from '../../components/pets/PetDetailsModal';
-import { Pet, AddPetFormValues } from '../../types';
+import AppointmentDetailsModal from '../../components/appointments/AppointmentDetailsModal';
+import { Pet, AddPetFormValues, UpcomingAppointment } from '../../types';
 
 const CustomerDashboard: React.FC = () => {
   const { user } = useAuth();
-
-  // Dynamic pets from API
+  const navigate = useNavigate();
   const [pets, setPets] = useState<Pet[]>([]);
   const [loadingPets, setLoadingPets] = useState(true);
+  
+  // Upcoming appointments state
+  const [upcomingAppointments, setUpcomingAppointments] = useState<UpcomingAppointment[]>([]);
+  const [loadingAppointments, setLoadingAppointments] = useState(true);
 
   // Modal state
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -32,28 +37,27 @@ const CustomerDashboard: React.FC = () => {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [selectedPet, setSelectedPet] = useState<Pet | null>(null);
+  
+  // Appointment details modal state
+  const [selectedAppointment, setSelectedAppointment] = useState<UpcomingAppointment | null>(null);
 
-  // Static mock appointments
-  const upcomingAppointments = [
-    {
-      id: 1,
-      date: '2025-03-25',
-      time: '10:30 AM',
-      petName: 'Max',
-      doctor: 'Dr. Sarah Johnson',
-      type: 'Annual Checkup',
-      status: 'Confirmed',
-    },
-    {
-      id: 2,
-      date: '2025-04-02',
-      time: '2:15 PM',
-      petName: 'Luna',
-      doctor: 'Dr. Michael Clark',
-      type: 'Vaccination',
-      status: 'Scheduled',
-    },
-  ];
+  // Fetch upcoming appointments
+  const fetchUpcomingAppointments = async () => {
+    setLoadingAppointments(true);
+    try {
+      const res = await api.get('/appointments/upcoming/list');
+      console.log('Upcoming appointments response:', res.data);
+      
+      // Handle different response structures
+      const appointments = res.data.data?.appointments || res.data.data || res.data || [];
+      setUpcomingAppointments(Array.isArray(appointments) ? appointments : []);
+    } catch (err) {
+      console.error('Error fetching upcoming appointments:', err);
+      setUpcomingAppointments([]);
+    } finally {
+      setLoadingAppointments(false);
+    }
+  };
 
   // Fetch /pets
   const fetchPets = useCallback(async () => {
@@ -69,15 +73,13 @@ const CustomerDashboard: React.FC = () => {
           breed: dto.breed,
           dateOfBirth: dto.date_of_birth,
           gender: dto.gender,
-          weight: dto.weight != null ? `${dto.weight} kg` : undefined,
-          age: dto.age != null ? `${dto.age} years` : 'Unknown',
+          weight: dto.weight != null ? parseFloat(dto.weight) : undefined,
+          age: dto.age != null ? dto.age : undefined,
           owner: dto.owner,
           color: dto.color,
           microchipNumber: dto.microchipNumber,
-          notes: dto.notes,
           createdAt: dto.created_at,
           updatedAt: dto.updated_at,
-          lastVisit: '—',
         }))
       );
     } catch (err) {
@@ -89,9 +91,27 @@ const CustomerDashboard: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (user) fetchPets();
-    else setLoadingPets(false);
+    if (user) {
+      fetchPets();
+      fetchUpcomingAppointments();
+    } else {
+      setLoadingPets(false);
+      setPets([]);
+      setLoadingAppointments(false);
+      setUpcomingAppointments([]);
+    }
   }, [user, fetchPets]);
+
+  // Handler for appointment cancellation
+  const handleAppointmentCancelled = (appointmentId: number) => {
+    setUpcomingAppointments(prevAppointments =>
+      prevAppointments.map(appointment =>
+        appointment.id === appointmentId
+          ? { ...appointment, status: 'cancelled' }
+          : appointment
+      )
+    );
+  };
 
   // Handlers
   const handleAddPet = async (form: AddPetFormValues) => {
@@ -115,15 +135,13 @@ const CustomerDashboard: React.FC = () => {
         breed: dto.breed,
         dateOfBirth: dto.date_of_birth,
         gender: dto.gender,
-        weight: dto.weight != null ? `${dto.weight} kg` : undefined,
-        age: dto.age != null ? `${dto.age} years` : 'Unknown',
+        weight: dto.weight != null ? parseFloat(dto.weight) : undefined,
+        age: dto.age != null ? dto.age : undefined,
         owner: dto.owner,
         color: dto.color,
         microchipNumber: dto.microchipNumber,
-        notes: dto.notes,
         createdAt: dto.created_at,
         updatedAt: dto.updated_at,
-        lastVisit: '—',
       },
     ]);
   };
@@ -148,10 +166,9 @@ const CustomerDashboard: React.FC = () => {
               species: data.species,
               breed: data.breed,
               dateOfBirth: data.birthDate,
-              weight: data.weight != null ? `${data.weight} kg` : undefined,
+              weight: data.weight != null ? parseFloat(String(data.weight)) : undefined,
               color: data.color,
               microchipNumber: data.microchipId,
-              notes: data.notes,
             }
           : p
       )
@@ -185,7 +202,7 @@ const CustomerDashboard: React.FC = () => {
           Pet Parent Dashboard
         </h1>
         <p className="text-neutral-600">
-          Welcome back, {user?.name}. Here’s an overview of your pets.
+          Welcome back, {user?.name}. Here's an overview of your pets.
         </p>
       </div>
 
@@ -210,9 +227,9 @@ const CustomerDashboard: React.FC = () => {
                 <Calendar className="h-6 w-6 text-secondary-600" />
               </div>
               <div>
-                <p className="text-sm text-neutral-600">Upcoming Visits</p>
+                <p className="text-sm text-neutral-600">Upcoming Appointments</p>
                 <p className="text-2xl font-bold text-neutral-800">
-                  {upcomingAppointments.length}
+                  {loadingAppointments ? '…' : upcomingAppointments.length}
                 </p>
               </div>
             </div>
@@ -234,7 +251,7 @@ const CustomerDashboard: React.FC = () => {
                 <Calendar className="mr-2 h-5 w-5 text-primary-500" />
                 Upcoming Appointments
               </h2>
-              <Button size="sm">Schedule Visit</Button>
+              <Button size="sm" onClick={() => navigate('/calendar')}>Schedule Visit</Button>
             </div>
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-neutral-200">
@@ -261,39 +278,85 @@ const CustomerDashboard: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-neutral-200">
-                  {upcomingAppointments.map((appointment) => (
-                    <tr key={appointment.id}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-800">
-                        <div className="font-medium">{appointment.date}</div>
-                        <div className="text-neutral-500">{appointment.time}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-700">
-                        {appointment.petName}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-700">
-                        {appointment.doctor}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-700">
-                        {appointment.type}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`px-2 py-1 inline-flex text-xs font-semibold rounded-full ${
-                            appointment.status === 'Confirmed'
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-blue-100 text-blue-800'
-                          }`}
-                        >
-                          {appointment.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <button className="text-primary-600 hover:text-primary-900">
-                          View Details
-                        </button>
+                  {loadingAppointments ? (
+                    <tr>
+                      <td colSpan={6} className="px-6 py-4 text-center text-neutral-600">
+                        Loading appointments...
                       </td>
                     </tr>
-                  ))}
+                  ) : upcomingAppointments.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="px-6 py-4 text-center text-neutral-600">
+                        No upcoming appointments found.
+                      </td>
+                    </tr>
+                  ) : (
+                    upcomingAppointments.map((appointment) => (
+                      <tr key={appointment.id}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-800">
+                          <div className="font-medium">
+                            {new Date(appointment.start_datetime).toLocaleDateString()}
+                          </div>
+                          <div className="text-neutral-500">
+                            {new Date(appointment.start_datetime).toLocaleTimeString([], {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })} - {new Date(appointment.end_datetime).toLocaleTimeString([], {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-700">
+                          <div className="font-medium">{appointment.pet_name}</div>
+                          <div className="text-xs text-neutral-500">
+                            {appointment.pet_species} - {appointment.pet_breed}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-700">
+                          <div className="font-medium">{appointment.doctor_name}</div>
+                          <div className="text-xs text-neutral-500">
+                            {appointment.doctor_specialization}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-700">
+                          <span className="capitalize">{appointment.appointment_type}</span>
+                          <div className="text-xs text-neutral-500">
+                            {appointment.duration} min
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span
+                            className={`px-2 py-1 inline-flex text-xs font-semibold rounded-full ${
+                              appointment.status === 'confirmed'
+                                ? 'bg-green-100 text-green-800'
+                                : appointment.status === 'scheduled'
+                                ? 'bg-blue-100 text-blue-800'
+                                : appointment.status === 'pending'
+                                ? 'bg-yellow-100 text-yellow-800'
+                                : appointment.status === 'in_progress'
+                                ? 'bg-yellow-100 text-yellow-800'
+                                : appointment.status === 'completed'
+                                ? 'bg-gray-100 text-gray-800'
+                                : appointment.status === 'cancelled'
+                                ? 'bg-red-100 text-red-800'
+                                : 'bg-gray-100 text-gray-800'
+                            }`}
+                          >
+                            {appointment.status.charAt(0).toUpperCase() + appointment.status.slice(1)}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          <button 
+                            onClick={() => setSelectedAppointment(appointment)}
+                            className="text-primary-600 hover:text-primary-900 transition-colors"
+                          >
+                            View Details
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
@@ -357,16 +420,12 @@ const CustomerDashboard: React.FC = () => {
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-neutral-600">Age:</span>
-                      <span className="text-neutral-800">{pet.age}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-neutral-600">Last Visit:</span>
-                      <span className="text-neutral-800">{pet.lastVisit}</span>
+                      <span className="text-neutral-800">{pet.age ? `${pet.age} years` : 'Unknown'}</span>
                     </div>
                     {pet.weight && (
                       <div className="flex justify-between">
                         <span className="text-neutral-600">Weight:</span>
-                        <span className="text-neutral-800">{pet.weight}</span>
+                        <span className="text-neutral-800">{pet.weight} kg</span>
                       </div>
                     )}
                   </div>
@@ -389,7 +448,7 @@ const CustomerDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Right Sidebar (restored in full) */}
+        {/* Right Sidebar */}
         <aside className="space-y-6">
           {/* Profile Card */}
           <div className="bg-white rounded-lg shadow-md p-6">
@@ -417,7 +476,7 @@ const CustomerDashboard: React.FC = () => {
           <div className="bg-white rounded-lg shadow-md p-6">
             <h2 className="text-xl font-bold text-neutral-800 mb-4">Quick Actions</h2>
             <div className="space-y-3">
-              <Button fullWidth>Schedule Appointment</Button>
+              <Button fullWidth onClick={() => navigate('/calendar')}>Schedule Appointment</Button>
               <Button fullWidth variant="outline">
                 Request Prescription Refill
               </Button>
@@ -481,6 +540,14 @@ const CustomerDashboard: React.FC = () => {
       <EditPetModal isOpen={isEditOpen} onClose={() => setIsEditOpen(false)} onEditPet={handleEditPet} pet={selectedPet} />
       <DeletePetModal isOpen={isDeleteOpen} onClose={() => setIsDeleteOpen(false)} onDeletePet={handleDeletePet} pet={selectedPet} />
       <PetDetailsModal isOpen={isDetailsOpen} onClose={() => setIsDetailsOpen(false)} pet={selectedPet} onEditPet={openEdit} onDeletePet={openDelete} />
+
+      {/* Appointment Details Modal */}
+      <AppointmentDetailsModal
+        isOpen={!!selectedAppointment}
+        onClose={() => setSelectedAppointment(null)}
+        appointment={selectedAppointment}
+        onAppointmentCancelled={handleAppointmentCancelled}
+      />
     </div>
   );
 };
