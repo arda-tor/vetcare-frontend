@@ -10,6 +10,7 @@ import {
   Edit as EditIcon,
   Trash2,
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../lib/axios';
 import Button from '../../components/common/Button';
@@ -20,6 +21,7 @@ import PetDetailsModal from '../../components/pets/PetDetailsModal';
 import { Pet, AddPetFormValues } from '../../types';
 
 const CustomerDashboard: React.FC = () => {
+  const navigate = useNavigate();
   const { user } = useAuth();
 
   // Dynamic pets from API
@@ -323,7 +325,6 @@ const CustomerDashboard: React.FC = () => {
                   className="border rounded-lg p-4 cursor-pointer hover:shadow-md transition-shadow relative group"
                   onClick={() => openDetails(pet)}
                 >
-                  {/* Edit/Delete overlay */}
                   <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex space-x-1">
                     <button
                       onClick={(e) => {
@@ -389,7 +390,7 @@ const CustomerDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Right Sidebar (restored in full) */}
+        {/* Right Sidebar */}
         <aside className="space-y-6">
           {/* Profile Card */}
           <div className="bg-white rounded-lg shadow-md p-6">
@@ -417,17 +418,13 @@ const CustomerDashboard: React.FC = () => {
           <div className="bg-white rounded-lg shadow-md p-6">
             <h2 className="text-xl font-bold text-neutral-800 mb-4">Quick Actions</h2>
             <div className="space-y-3">
-              <Button fullWidth>Schedule Appointment</Button>
-              <Button fullWidth variant="outline">
-                Request Prescription Refill
-              </Button>
-              <Button fullWidth variant="outline">
-                Message Your Vet
-              </Button>
-              <Button fullWidth variant="outline">
-                View Medical Records
-              </Button>
-            </div>
+<Button fullWidth>Schedule Appointment</Button>
+    <Button fullWidth variant="outline">Request Prescription Refill</Button>
+    <Button fullWidth variant="outline">Message Your Vet</Button>
+    <Button fullWidth onClick={() => navigate('/customer-medical-records')}>
+      View Medical Records
+    </Button>
+  </div>
           </div>
 
           {/* Notifications */}
@@ -478,9 +475,25 @@ const CustomerDashboard: React.FC = () => {
 
       {/* Modals */}
       <AddPetModal isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} onAddPet={handleAddPet} />
-      <EditPetModal isOpen={isEditOpen} onClose={() => setIsEditOpen(false)} onEditPet={handleEditPet} pet={selectedPet} />
-      <DeletePetModal isOpen={isDeleteOpen} onClose={() => setIsDeleteOpen(false)} onDeletePet={handleDeletePet} pet={selectedPet} />
-      <PetDetailsModal isOpen={isDetailsOpen} onClose={() => setIsDetailsOpen(false)} pet={selectedPet} onEditPet={openEdit} onDeletePet={openDelete} />
+      <EditPetModal
+        isOpen={isEditOpen}
+        onClose={() => setIsEditOpen(false)}
+        onEditPet={handleEditPet}
+        pet={selectedPet}
+      />
+      <DeletePetModal
+        isOpen={isDeleteOpen}
+        onClose={() => setIsDeleteOpen(false)}
+        onDeletePet={handleDeletePet}
+        pet={selectedPet}
+      />
+      <PetDetailsModal
+        isOpen={isDetailsOpen}
+        onClose={() => setIsDetailsOpen(false)}
+        pet={selectedPet}
+        onEditPet={openEdit}
+        onDeletePet={openDelete}
+      />
     </div>
   );
 };

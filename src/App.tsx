@@ -11,6 +11,7 @@ import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
 import DashboardRouter from './pages/dashboard/DashboardRouter';
 import CustomerMedicalRecords from './pages/dashboard/CustomerMedicalRecords';
+import MedicalRecords from './pages/dashboard/MedicalRecords';
 
 function App() {
   return (
@@ -25,7 +26,9 @@ function App() {
             <Route path="/register" element={<Register />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/dashboard" element={<DashboardRouter />} />
-            <Route path="/customer-medical-records" element={<CustomerMedicalRecords />} />
+            <Route path="/customer-medical-records/:petId?" element={<CustomerMedicalRecords />} />
+            
+            <Route path="/medical-records" element={<MedicalRecords />} />
           </Routes>
         </Layout>
       </Router>
