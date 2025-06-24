@@ -12,6 +12,7 @@ import ForgotPassword from './pages/ForgotPassword';
 import Calendar from './pages/Calendar';
 import DashboardRouter from './pages/dashboard/DashboardRouter';
 import CustomerMedicalRecords from './pages/dashboard/CustomerMedicalRecords';
+import MedicalRecords from './pages/dashboard/MedicalRecords';
 
 function App() {
   return (
@@ -29,7 +30,7 @@ function App() {
             {/* DashboardRouter, role kontrolünü yapıp ilgili dashboard'ı yüklüyor */}
             <Route path="/dashboard" element={<DashboardRouter />} />
 
-            <Route path="/customer-medical-records" element={<CustomerMedicalRecords />} />
+            <Route path="/customer-medical-records/:petId?" element={<CustomerMedicalRecords />} />
 
             <Route path="/health" element={<Health />} />
             {/* Eğer rol bazlı alt rotalar planlanırsa örn:
@@ -38,6 +39,8 @@ function App() {
             <Route path="/dashboard/admin" element={<AdminDashboard />} />
              gibi ekleyebilirsin. */}
 
+            
+            <Route path="/medical-records" element={<MedicalRecords />} />
           </Routes>
         </Layout>
       </Router>
