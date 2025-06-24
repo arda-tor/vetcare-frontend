@@ -67,7 +67,6 @@ export interface AlertProps {
  */
 
 export interface Pet {
-  lastVisit: ReactNode;
   id: number;
   // ownerId is frontend's camelCase. The backend sends owner_id.
   // We will map this when receiving from backend.
@@ -225,4 +224,71 @@ export interface DoctorProfile {
   updatedAt: string;
 
   user?: User;
+}
+
+export interface TimeSlot {
+  time: string;
+  time_range: string;
+  available_count: number;
+  total_doctors: number;
+}
+
+export interface CalendarDay {
+  date: string;
+  day_name: string;
+  available_slots: TimeSlot[];
+  total_available_slots: number;
+}
+
+export interface CalendarResponse {
+  is_success: boolean;
+  message: string;
+  data: {
+    calendar: CalendarDay[];
+    date_range: {
+      start: string;
+      end: string;
+    };
+  };
+}
+
+export interface AvailableDoctor {
+  id: number;
+  name: string;
+  specialization: string;
+  email?: string;
+  license_number?: string;
+}
+
+export interface AvailableDoctorsResponse {
+  is_success: boolean;
+  message: string;
+  data: {
+    doctors: AvailableDoctor[];
+    date: string;
+    time: string;
+    time_range: string;
+  };
+}
+
+export interface UpcomingAppointment {
+  id: number;
+  doctor_id: number;
+  doctor_name: string;
+  doctor_specialization: string;
+  user_id: number;
+  user_name: string;
+  user_email: string;
+  pet_id: number;
+  pet_name: string;
+  pet_species: string;
+  pet_breed: string;
+  start_datetime: string;
+  end_datetime: string;
+  appointment_type: string;
+  duration: number;
+  notes: string | null;
+  status: string;
+  created_at: string;
+  updated_at: string;
 }

@@ -9,6 +9,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Health from './pages/Health';
 import ForgotPassword from './pages/ForgotPassword';
+import Calendar from './pages/Calendar';
 import DashboardRouter from './pages/dashboard/DashboardRouter';
 import CustomerMedicalRecords from './pages/dashboard/CustomerMedicalRecords';
 import MedicalRecords from './pages/dashboard/MedicalRecords';
@@ -25,6 +26,8 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/calendar" element={<Calendar />} />
+            {/* DashboardRouter, role kontrolünü yapıp ilgili dashboard'ı yüklüyor */}
             <Route path="/dashboard" element={<DashboardRouter />} />
 
             <Route path="/customer-medical-records/:petId?" element={<CustomerMedicalRecords />} />
