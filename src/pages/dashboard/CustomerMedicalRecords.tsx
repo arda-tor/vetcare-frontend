@@ -8,44 +8,40 @@ import {
   Download,
   Loader2,
   AlertCircle,
-  User,       // Added for Pet Information icon
-  Stethoscope, // Added for Visit Summary icon
-  Pill,        // Added for Prescription icon
-  Edit,        // For doctor-only actions if you ever re-enable them
-  Plus,        // For new record button if you ever re-enable for doctor
+  User,      
+  Stethoscope, 
+  Pill,        
+  Edit,       
+  Plus,        
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import Button from '../../components/common/Button';
-// import Input from '../../components/common/Input'; // Input component is not used in this version
-import api from '../../lib/axios';
-import { Pet } from '../../types'; // Pet interface'ini doğru bir şekilde kullandığınızdan emin olun
 
-// ApiMedicalRecord interface'i backend'den gelen verilere göre güncellendi.
-// MedicalRecords.tsx'teki alanları da dikkate alındı.
+import api from '../../lib/axios';
+import { Pet } from '../../types'; 
+
 interface ApiMedicalRecord {
   id: number;
-  visit_date: string; // Backend'den gelen hali
+  visit_date: string; 
   assessment: string;
   plan: string;
-  status: 'draft' | 'completed' | 'reviewed'; // Adjusted to backend's possible values
-  next_visit_date?: string; // Optional, can be null
-  doctor: { user: { name: string; } }; // Backend'den gelen doktor bilgisi
-  chief_complaint?: string; // From MedicalRecords.tsx mock, ensure backend provides
-  physical_examination?: string; // From MedicalRecords.tsx mock, ensure backend provides
-  notes?: string; // From MedicalRecords.tsx mock, ensure backend provides
-  prescription?: string; // From MedicalRecords.tsx mock, ensure backend provides
-  
-  // Frontend tarafından eklenecek alanlar (tüm pet kayıtlarını birleştirirken gerekli)
-  petId: number; // Hangi evcil hayvana ait olduğunu belirlemek için
-  petName: string; // Hangi evcil hayvana ait olduğunu kolayca göstermek için
-  petSpecies?: string; // MedicalRecords.tsx'ten alındı, eğer pet objenizde varsa kullanın
-  ownerName?: string; // MedicalRecords.tsx'ten alındı, eğer owner bilgisi pet ile geliyorsa
+  status: 'draft' | 'completed' | 'reviewed'; 
+  next_visit_date?: string; 
+  doctor: { user: { name: string; } }; 
+  chief_complaint?: string; 
+  physical_examination?: string; 
+  notes?: string; 
+  prescription?: string; 
+  petId: number; 
+  petName: string; 
+  petSpecies?: string; 
+  ownerName?: string; 
 }
 
 const CustomerMedicalRecords: React.FC = () => {
-  const { petId: paramPetId } = useParams<{ petId: string }>(); // URL'den gelen petId
+  const { petId: paramPetId } = useParams<{ petId: string }>(); 
   const navigate = useNavigate();
-  const { user } = useAuth(); // Auth context'inden kullanıcı bilgilerini al
+  const { user } = useAuth(); 
 
   const [pets, setPets] = useState<Pet[]>([]);
   const [isLoadingPets, setIsLoadingPets] = useState(true);
@@ -58,12 +54,12 @@ const CustomerMedicalRecords: React.FC = () => {
   const [selectedRecord, setSelectedRecord] = useState<ApiMedicalRecord | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
-  // Seçili evcil hayvanın ID'si. Eğer URL'de yoksa, null olarak kabul edilir (tüm evcil hayvanlar için).
+  
   const currentSelectedPetId = useMemo(() => {
     return paramPetId ? Number(paramPetId) : null;
   }, [paramPetId]);
 
-  // isDoctor rol kontrolü (customer için her zaman false olacak)
+  
   const isDoctor = user?.role === 'doctor';
 
 
@@ -101,7 +97,7 @@ const CustomerMedicalRecords: React.FC = () => {
 
   // 2) Load medical history based on selected pet or all pets
   useEffect(() => {
-    // Evcil hayvan listesi yüklenmeden kayıtları çekmeyiz
+   
     if (isLoadingPets) return;
 
     let cancelled = false;
@@ -113,7 +109,7 @@ const CustomerMedicalRecords: React.FC = () => {
 
       try {
         if (currentSelectedPetId) {
-          // Belirli bir evcil hayvan seçildiyse (URL'de petId var)
+        
           const pet = pets.find(p => p.id === currentSelectedPetId);
           if (!pet) {
             throw new Error('Selected pet not found in your list.');
@@ -134,7 +130,7 @@ const CustomerMedicalRecords: React.FC = () => {
             throw new Error(res.data.message || 'Invalid response for single pet history');
           }
         } else {
-          // "All Pets" seçildiyse (URL'de petId yok), tüm petlerin kayıtlarını çek
+          
           console.log('→ fetching medical history for all pets…');
           const allPetRecordsPromises = pets.map(async (p) => {
             try {

@@ -5,7 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 const DoctorDashboard: React.FC = () => {
   const { user } = useAuth();
 
-  // Mock data for demonstration
+  
   const upcomingAppointments = [
     { id: 1, time: '09:00 AM', ownerName: 'Emily Wilson', petName: 'Max', petType: 'Dog', reason: 'Annual Checkup' },
     { id: 2, time: '10:30 AM', ownerName: 'James Thompson', petName: 'Luna', petType: 'Cat', reason: 'Vaccination' },

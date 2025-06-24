@@ -30,7 +30,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
             disabled:bg-neutral-100 disabled:text-neutral-500
             ${error ? 'border-red-500' : 'border-neutral-300'}
             ${fullWidth ? 'w-full' : ''}
-            px-4 py-2
+            px-4 py-2 /* Bu padding değerini aklımızda tutuyoruz */
             ${className}
           `}
           {...props}

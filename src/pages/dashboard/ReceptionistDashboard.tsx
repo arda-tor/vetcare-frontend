@@ -6,7 +6,7 @@ import Button from '../../components/common/Button';
 const ReceptionistDashboard: React.FC = () => {
   const { user } = useAuth();
 
-  // Mock data for demonstration
+ 
   const upcomingAppointments = [
     { id: 1, time: '09:00 AM', ownerName: 'Emily Wilson', petName: 'Max', petType: 'Dog', doctor: 'Dr. Johnson', status: 'Checked In' },
     { id: 2, time: '10:30 AM', ownerName: 'James Thompson', petName: 'Luna', petType: 'Cat', doctor: 'Dr. Johnson', status: 'Scheduled' },
@@ -341,7 +341,7 @@ const ReceptionistDashboard: React.FC = () => {
   );
 };
 
-// Helper component for status badges
+
 const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
   const getStatusStyles = () => {
     switch (status) {

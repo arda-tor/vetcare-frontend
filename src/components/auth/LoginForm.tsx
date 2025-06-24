@@ -1,4 +1,3 @@
-// src/components/auth/LoginForm.tsx
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { LoginFormValues } from '../../types';
@@ -66,10 +65,7 @@ const LoginForm: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => {
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="relative">
-            <Mail
-              size={18}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500"
-            />
+           
             <Input
               type="email"
               id="email"
@@ -88,10 +84,7 @@ const LoginForm: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => {
           </div>
 
           <div className="relative">
-            <Lock
-              size={18}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500"
-            />
+            
             <Input
               type={showPassword ? 'text' : 'password'}
               id="password"

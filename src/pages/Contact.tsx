@@ -40,11 +40,9 @@ const Contact: React.FC = () => {
     setSubmitStatus(null);
 
     try {
-      // In a real application, you would send this data to your backend
-      // For demo purposes, we'll simulate a successful submission
       console.log('Form data:', data);
       
-      // Simulate API delay
+     
       await new Promise((resolve) => setTimeout(resolve, 1500));
       
       setSubmitStatus({
@@ -52,7 +50,7 @@ const Contact: React.FC = () => {
         message: 'Your message has been sent successfully. We will contact you soon!',
       });
       
-      // Reset form after successful submission
+      
       reset();
     } catch (error) {
       console.error('Form submission error:', error);

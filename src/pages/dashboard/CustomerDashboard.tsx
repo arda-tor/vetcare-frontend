@@ -1,4 +1,4 @@
-// src/pages/dashboard/CustomerDashboard.tsx
+
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -11,7 +11,6 @@ import {
   Edit as EditIcon,
   Trash2,
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../lib/axios';
 import Button from '../../components/common/Button';
@@ -23,7 +22,6 @@ import AppointmentDetailsModal from '../../components/appointments/AppointmentDe
 import { Pet, AddPetFormValues, UpcomingAppointment } from '../../types';
 
 const CustomerDashboard: React.FC = () => {
-  const navigate = useNavigate();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [pets, setPets] = useState<Pet[]>([]);
