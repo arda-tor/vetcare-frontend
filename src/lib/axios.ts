@@ -1,6 +1,8 @@
 // src/lib/axios.ts
 import axios from 'axios';
 
+console.log('API Base URL:', import.meta.env.VITE_API_BASE_URL);
+
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,
   withCredentials: false,
@@ -9,6 +11,7 @@ const api = axios.create({
 // Her istekten önce token'ı güncelleyen request interceptor
 api.interceptors.request.use(
     (config) => {
+        console.log('Making API request to:', `${config.baseURL || ''}${config.url || ''}`);
         const token = localStorage.getItem('token');
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
@@ -16,13 +19,24 @@ api.interceptors.request.use(
         return config;
     },
     (error) => {
+        console.error('API Request Error:', error);
         return Promise.reject(error);
     }
 );
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    console.log('API Response:', response.status, response.config.url);
+    return response;
+  },
   (error) => {
+    console.error('API Response Error:', error.message, error.config?.url);
+    if (error.response) {
+      console.error('Error details:', error.response.status, error.response.data);
+    } else {
+      console.error('Network error - backend might be unreachable');
+    }
+    
     // Eğer 401 hatası alırsak ve bu bir login/register isteği değilse
     if (error.response?.status === 401 && !error.config.url.includes('/auth/')) {
       console.warn('Unauthorized request – logging out user and redirecting.');
