@@ -27,12 +27,7 @@ const Register: React.FC = () => {
             <p className="text-lg text-neutral-600 mb-4">
               Create your account to access the staff portal and start managing appointments and patient care.
             </p>
-            <div className="bg-primary-50 border border-primary-100 rounded-lg p-4">
-              <h3 className="font-medium text-primary-800 mb-2">For Demo Purpose:</h3>
-              <p className="text-sm text-neutral-700">
-                In a production environment, staff registration would typically require admin approval. For this demo, all registrations are automatically approved.
-              </p>
-            </div>
+           
           </div>
 
           <div className="w-full max-w-md">
