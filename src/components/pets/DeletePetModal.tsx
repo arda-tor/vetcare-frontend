@@ -1,4 +1,4 @@
-// src/components/pets/DeletePetModal.tsx
+
 import React, { useState } from 'react';
 import { X, Trash2, AlertTriangle } from 'lucide-react';
 import Button from '../common/Button';
